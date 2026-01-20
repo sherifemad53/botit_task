@@ -49,20 +49,20 @@ jobs:
     needs: build_and_test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
     steps:
-      - name: Deploy to EC2
+      - name: Deploy to AWS EC2
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Ensure we use the lowercased repo name
             REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-            sudo docker pull ghcr.io/$REPO_NAME:latest
-            sudo docker stop botit_task || true
-            sudo docker rm botit_task || true
-            sudo docker run -d --name botit_task -p 80:5000 ghcr.io/$REPO_NAME:latest
+            docker pull ghcr.io/$REPO_NAME:latest
+            docker stop flask_app || true
+            docker rm flask_app || true
+            docker run -d --name flask_app -p 80:5000 ghcr.io/$REPO_NAME:latest
 
   notify:
     needs: [build_and_test, deploy]
@@ -75,10 +75,25 @@ jobs:
         run: |
           if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
             echo "status=FAILED" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.deploy.result }}" == "skipped" ]]; then
+            echo "status=SUCCESS (No Deploy)" >> $GITHUB_OUTPUT
           else
             echo "status=SUCCESS" >> $GITHUB_OUTPUT
           fi
 
-      - name: Send Notification
+      - name: Send Slack Notification
         run: |
-          echo "Pipeline Status: ${{ steps.status.outputs.status }}"
+          STATUS="${{ steps.status.outputs.status }}"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if [[ "$STATUS" == "FAILED" ]]; then
+            ICON="❌"
+          else
+            ICON="✅"
+          fi
+
+          curl -X POST -H 'Content-type: application/json' \
+          --data "{
+            \"text\": \"$ICON CI/CD Pipeline Status: $STATUS\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nCommit: ${{ github.sha }}\nRun: $RUN_URL\"
+          }" \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
