@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
         - name: botit-task
-          image: botit-task
+          image: ghcr.io/sherifemad53/botit_task:latest
           ports:
             - containerPort: 5000
