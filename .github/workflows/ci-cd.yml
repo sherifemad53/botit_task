@@ -2,6 +2,10 @@ name: CI-CD
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,16 +25,20 @@ jobs:
         run: |
           python tests/test_hello.py
 
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build Docker image
         run: |
-          docker build -t flask-app .
+          docker build -t ghcr.io/${{ github.repository }}:latest .
 
-      # Deploy to Artifactory registry GHCR
-      - name: Deploy to GHCR
+      - name: Push Docker image
         run: |
-          echo $GITHUB_TOKEN | docker login ghcr.io -u sherifemad --password-stdin
-          docker tag botit_task ghcr.io/sherifemad/botit-task:latest
-          docker push ghcr.io/sherifemad/botit-task:latest
+          docker push ghcr.io/${{ github.repository }}:latest
 
       # Deploy to Kubernetes cluster
       - name: Deploy to Kubernetes
