@@ -60,9 +60,9 @@ jobs:
           script: |
             REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
             docker pull ghcr.io/$REPO_NAME:latest
-            docker stop flask_app || true
-            docker rm flask_app || true
-            docker run -d --name flask_app -p 80:5000 ghcr.io/$REPO_NAME:latest
+            docker stop botit_task || true
+            docker rm botit_task || true
+            docker run -d --name botit_task -p 80:5000 ghcr.io/$REPO_NAME:latest
 
   notify:
     needs: [build_and_test, deploy]
