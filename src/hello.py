@@ -7,6 +7,10 @@ app = Flask(__name__)
 def hello():
     return 'Hello, Botit!'
 
+@app.route('/health')
+def health():
+    return 'OK'
+
 @app.route('/<page_name>')
 def other_page(page_name):
     response = make_response('The page named %s does not exist.' \
