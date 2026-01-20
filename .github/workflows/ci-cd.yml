@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  merge:
+  pull_request:
     branches:
       - main
 
@@ -13,7 +13,7 @@ permissions:
   packages: write
 
 jobs:
-  build:
+  build_and_test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,8 +30,6 @@ jobs:
       - name: Run tests
         run: |
           python tests/test_hello.py
-        outputs:
-          test_result: ${{ steps.run_tests.outcome }}
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -40,12 +38,47 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Docker image
+      - name: Build and Push Docker image
         run: |
-          docker build -t ghcr.io/${{ github.repository }}:latest .
+          # Lowercase repo name for docker image format
+          REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          docker build -t ghcr.io/$REPO_NAME:latest .
+          docker push ghcr.io/$REPO_NAME:latest
 
-      - name: Push Docker image
+  deploy:
+    needs: build_and_test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Ensure we use the lowercased repo name
+            REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            sudo docker pull ghcr.io/$REPO_NAME:latest
+            sudo docker stop botit_task || true
+            sudo docker rm botit_task || true
+            sudo docker run -d --name botit_task -p 80:5000 ghcr.io/$REPO_NAME:latest
+
+  notify:
+    needs: [build_and_test, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check Status
         run: |
-          docker push ghcr.io/${{ github.repository }}:latest
-
-      - name:
+          if [ "${{ contains(needs.*.result, 'failure') }}" = "true" ]; then
+            echo "Pipeline Failed! Sending Notification..."
+            # Simulating notification failure
+            exit 1
+          else
+            echo "Pipeline Succeeded! Sending Notification..."
+          fi
+      - name: Send Notification
+        if: always()
+        run: |
+          echo "Notification Sent. Status: ${{ contains(needs.*.result, 'failure') && 'Failure' || 'Success' }}"
