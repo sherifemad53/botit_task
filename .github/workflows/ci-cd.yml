@@ -64,21 +64,21 @@ jobs:
             sudo docker rm botit_task || true
             sudo docker run -d --name botit_task -p 80:5000 ghcr.io/$REPO_NAME:latest
 
-    notify:
-      needs: [build_and_test, deploy]
-      runs-on: ubuntu-latest
-      if: always()
+  notify:
+    needs: [build_and_test, deploy]
+    runs-on: ubuntu-latest
+    if: always()
 
-      steps:
-        - name: Determine Pipeline Status
-          id: status
-          run: |
-            if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
-              echo "status=FAILED" >> $GITHUB_OUTPUT
-            else
-              echo "status=SUCCESS" >> $GITHUB_OUTPUT
-            fi
+    steps:
+      - name: Determine Pipeline Status
+        id: status
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "status=FAILED" >> $GITHUB_OUTPUT
+          else
+            echo "status=SUCCESS" >> $GITHUB_OUTPUT
+          fi
 
-        - name: Send Notification
-          run: |
-            echo "Pipeline Status: ${{ steps.status.outputs.status }}"
+      - name: Send Notification
+        run: |
+          echo "Pipeline Status: ${{ steps.status.outputs.status }}"
