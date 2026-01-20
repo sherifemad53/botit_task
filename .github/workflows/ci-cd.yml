@@ -1,0 +1,38 @@
+name: CI-CD
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          python tests/test_hello.py
+
+      - name: Build Docker image
+        run: |
+          docker build -t flask-app .
+
+      # Deploy to Artifactory registry GHCR
+      - name: Deploy to GHCR
+        run: |
+          echo $GITHUB_TOKEN | docker login ghcr.io -u sherifemad --password-stdin
+          docker tag botit_task ghcr.io/sherifemad/botit-task:latest
+          docker push ghcr.io/sherifemad/botit-task:latest
+
+      # Deploy to Kubernetes cluster
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f k8s/deployment.yaml

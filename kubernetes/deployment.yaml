@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: botit-task
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: botit-task
+  template:
+    metadata:
+      labels:
+        app: botit-task
+    spec:
+      containers:
+        - name: botit-task
+          image: botit-task
+          ports:
+            - containerPort: 5000

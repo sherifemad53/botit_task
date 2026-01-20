@@ -1,0 +1,5 @@
+services:
+  botit_task:
+    build: .
+    ports:
+      - "8080:5000"
