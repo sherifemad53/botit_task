@@ -14,5 +14,10 @@ class BasicTestCase(unittest.TestCase):
         response = tester.get('a', content_type='html/text')
         self.assertEqual(response.status_code, 404)
         self.assertTrue(b'does not exist' in response.data)
+    def test_health(self):
+        tester = app.test_client(self)
+        response = tester.get('/health', content_type='html/text')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, b'OK')
 if __name__ == '__main__':
     unittest.main()
